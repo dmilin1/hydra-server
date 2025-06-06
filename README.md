@@ -103,3 +103,45 @@ Open your browser and navigate to `http://localhost:3000`. You'll be prompted to
 ### 8. Connecting to Hydra App
 
 Navigate to Settings => Advanced => Use Custom Server. Enable it and enter the public IP or domain you're hosting the server on without a trailing slash. Hydra will automatically attempt to validate if the server is working. If hosted on a home computer, you will likely need to set up port forwarding and include port 3000 (or whatever external port you chose).
+
+### 9. Enable auto-start on Boot
+
+If running on a debian distro the following commands allow the server to auto run on startup:
+
+
+Create a systemd service file
+```bash
+sudo nano /etc/systemd/system/hydra-server.service
+```
+
+Enter the following code into the service:
+```bash
+[Unit]
+Description=Hydra Server Bun Script
+After=network.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/hydra-server
+ExecStart=/home/pi/.bun/bin/bun run start
+Restart=always
+RestartSec=5
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/pi/.bun/bin
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then reload and enable the service:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable hydra-server.service
+```
+
+Then run the following to start and check the service:
+```bash
+sudo systemctl start hydra-server.service
+sudo systemctl status hydra-server.service
+```
+
+The service should now auto-start on boot.
