@@ -1,0 +1,14 @@
+services:
+  hydra-server:
+    build:
+      context: https://github.com/dmilin1/hydra-server.git
+    ports:
+      - 3000:3000
+    volumes:
+      - ./config:/app/config
+      - ./data:/data
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - IS_CUSTOM_SERVER=true
