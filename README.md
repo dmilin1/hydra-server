@@ -12,73 +12,91 @@ A backend service for the Hydra for Reddit app. Using a custom server will unloc
 - 🗄️ SQLite database with Drizzle ORM
 - ⚡ Built with Bun for fast performance
 
-## Prerequisites
-
-- [Bun](https://bun.sh) v1.2.5 or higher
-- Node.js 18+ (for some build tools)
-- A Groq API key for AI features
-
-## Project Structure
-
-```
-hydra-server/
-├── frontend/        # React + Vite dashboard
-├── routes/          # API endpoints
-├── services/        # Business logic services
-├── middleware/      # Express-style middleware
-├── db/              # Database schema and migrations
-├── tasks/           # Background task definitions
-├── schedules/       # Scheduled job configurations
-└── utils/           # Utility functions
-```
-
 ## Setup Instructions
 
-### 1. Clone the Repository
+There are two ways to set up the server: **Docker Compose** or **Manual Setup**.
+
+---
+
+### Docker Compose Setup
+
+This method uses Docker to build and run the application in a container without needing to clone the repository yourself.
+
+#### Prerequisites
+
+- [Docker](https://www.docker.com/get-started)
+- [Docker Compose](https://docs.docker.com/compose/install/)
+
+#### 1. Create the `compose.yaml` file
+
+Copy the [`compose.yaml`](compose.yaml) file or the following codeblock below:
+
+```yaml
+services:
+  hydra-server:
+    build:
+      context: https://github.com/dmilin1/hydra-server.git
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config:/app/config
+      - ./data:/data
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - IS_CUSTOM_SERVER=true
+```
+
+#### 2. Create the .env file
+
+```env
+# Get your API key from https://console.groq.com/keys
+GROQ_API_KEY=your_groq_api_key_here 
+# Generate a key with `openssl rand -hex 32`
+ENCRYPTION_KEY=your_32_byte_encryption_key_here
+# Set a strong password to access the dashboard
+DASHBOARD_PASSWORD=your_secure_dashboard_password
+```
+
+---
+
+### Manual Setup
+
+#### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/dmilin1/hydra-server.git
 cd hydra-server
 ```
 
-### 2. Install Dependencies
+#### 2. Install Dependencies
 
-Install backend dependencies:
+Install backend and frontend dependencies:
 
 ```bash
 bun install
-```
-
-Install frontend dependencies:
-
-```bash
 cd frontend
 bun install
 cd ..
 ```
 
-### 3. Environment Configuration
+### Environment Configuration
 
-Create a `.env` file in the root directory with the following variables (or copy the .env.example file):
+Create a `.env` file in the root directory with the following variables:
 
 ```env
-GROQ_API_KEY=your_groq_api_key
-# You can generate an encryption key with this command `openssl enc -aes-256-cbc -k secret -P -md sha256`
-ENCRYPTION_KEY=your_32_character_encryption_key_here
+# Get your API key from https://console.groq.com/keys
+GROQ_API_KEY=your_groq_api_key_here 
+# Generate a key with `openssl rand -hex 32`
+ENCRYPTION_KEY=your_32_byte_encryption_key_here
+# Set a strong password to access the dashboard
 DASHBOARD_PASSWORD=your_secure_dashboard_password
 
 IS_CUSTOM_SERVER=true
 ```
 
-**Important Notes:**
-
-- `ENCRYPTION_KEY` must be exactly 32 characters long
-- `DASHBOARD_PASSWORD` should be changed for security purposes
-- `IS_CUSTOM_SERVER=true` is required to bypass subscription checks
-
-### 5. Build the Frontend
-
-Build the React dashboard:
+#### 4. Build the Frontend
 
 ```bash
 cd frontend
@@ -86,25 +104,23 @@ bun run build
 cd ..
 ```
 
-The built files will be served automatically by the backend server.
-
-### 6. Running the Server
+#### 5. Running the Server
 
 ```bash
 bun run start
 ```
 
-The server will start on `http://localhost:3000`
+The server will start on `http://localhost:3000`.
 
-### 7. Accessing the Dashboard
+### Accessing the Dashboard
 
-Open your browser and navigate to `http://localhost:3000`. You'll be prompted to enter the dashboard password (the value of `DASHBOARD_PASSWORD` from your `.env` file).
+Once the server is running (either via Docker or manually), open your browser and navigate to `http://localhost:3000`. You'll be prompted to enter the dashboard password you set in your `.env` file.
 
-### 8. Connecting to Hydra App
+### Connecting to Hydra App
 
-Navigate to Settings => Advanced => Use Custom Server. Enable it and enter the public IP or domain you're hosting the server on without a trailing slash. Hydra will automatically attempt to validate if the server is working. If hosted on a home computer, you will likely need to set up port forwarding and include port 3000 (or whatever external port you chose).
+Navigate to Settings => Advanced => Use Custom Server. Enable it and enter the public IP or domain where you are hosting the server. If hosted at home, you will likely need to set up a reverse proxy or port forwarding for port 3000. For example: `http://your_public_ip:3000`.
 
-### 9. Enable auto-start on Boot
+### Enable auto-start on Boot
 
 If running on a debian distro the following commands allow the server to auto run on startup:
 
