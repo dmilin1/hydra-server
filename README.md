@@ -74,11 +74,11 @@ Below environment variables need to be set only if `AI_PROVIDER` is set to `open
 
 |Variable|Default Value|Remarks|
 |---|---|---|
-|OPENAI_BASE_URL|`https://api.openai.com/v1`|Base URL for OpenAI. (optional)|
+|OPENAI_BASE_URL|`https://api.openai.com/v1`|Base URL for OpenAI.|
 |OPENAI_API_KEY|---|OpenAI API key. (optional)|
-|OPENAI_SUMMARY_MODEL|gpt-4.1-mini|Model used for posts/comments summary. (optional)|
-|OPENAI_QUERY_MODEL|gpt-4.1-mini|Model used for database query. (optional)|
-|OPENAI_FILTER_MODEL|gpt-4.1-mini|Model used for posts filtering.(optional)|
+|OPENAI_SUMMARY_MODEL|gpt-4.1-mini|Model used for posts/comments summary. Must be supported by provider.|
+|OPENAI_QUERY_MODEL|gpt-4.1-mini|Model used for database query. Must be supported by provider.|
+|OPENAI_FILTER_MODEL|gpt-4.1-mini|Model used for posts filtering. Must be supported by provider.|
 ---
 
 ### Manual Setup

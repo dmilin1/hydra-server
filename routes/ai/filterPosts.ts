@@ -36,9 +36,7 @@ const filterPostsSchema = z.object({
   posts: z.array(postSchema),
 });
 
-// const responseSchema = z.record(z.string(), z.boolean());
 const responseSchema = z.object({}).catchall(z.boolean());
-// const responseSchema = z.object({response: z.record(z.string(), z.boolean())})
 
 
 const systemPrompt = `

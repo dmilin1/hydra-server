@@ -28,10 +28,6 @@ const makeUserPrompt = (
   ${comments.map((comment, index) => `${index + 1}. ${comment}`).join("\n")}
 `;
 
-
-
-// const MODEL_ID = process.env.OPENAI_SUMMARY_MODEL || 'openai/gpt-oss-20b'
-
 let MODEL_ID: string = ""
 
 if (ai_provider == "groq") {

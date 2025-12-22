@@ -27,8 +27,6 @@ const makeUserPrompt = (
   Text: ${postText}
 `;
 
-// const MODEL_ID = process.env.OPENAI_SUMMARY_MODEL || 'openai/gpt-oss-20b';
-
 let MODEL_ID: string = ""
 
 if (ai_provider == "groq") {
