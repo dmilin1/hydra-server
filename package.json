@@ -27,9 +27,9 @@
   "dependencies": {
     "@ai-sdk/groq": "^2.0.17",
     "@ai-sdk/openai": "^2.0.88",
-    "ai": "5.0.116",
+    "ai": "^5.0.34",
     "drizzle-orm": "^0.40.0",
     "expo-server-sdk": "^3.14.0",
-    "zod": "^4.2.1"
+    "zod": "^4.1.5"
   }
 }

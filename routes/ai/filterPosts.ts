@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { verifySubscription } from "../../middleware/subscription";
-// import { groq } from "../../utils/models";
 import { aiClient } from "../../utils/models";
 import { ai_provider } from "../../utils/models";
 import { generateObject } from "ai";
