@@ -24,7 +24,7 @@ export function Login() {
       });
 
       if (!response.ok) {
-        throw new Error("Invalid API key");
+        throw new Error("Invalid Password");
       }
 
       // Store the API key in localStorage
@@ -34,7 +34,7 @@ export function Login() {
       const from = location.state?.from?.pathname || "/";
       navigate(from, { replace: true });
     } catch (_err) {
-      setError("Invalid API key");
+      setError("Invalid Password");
       setApiKey("");
     } finally {
       setIsLoading(false);
@@ -42,7 +42,7 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">Fenter 
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
@@ -62,7 +62,7 @@ export function Login() {
                 onChange={(e) => setApiKey(e.target.value)}
                 required
                 className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Enter your API key"
+                placeholder="Enter your dashboard password"
               />
             </div>
           </div>
