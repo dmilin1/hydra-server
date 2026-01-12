@@ -1,9 +1,18 @@
 import { z } from "zod";
 import { authenticateRequest } from "../../middleware/auth";
 import { corsHeaders } from "../../middleware/cors";
-import { groq } from "../../utils/models";
+import { aiClient } from "../../utils/models";
+import { ai_provider } from "../../utils/models";
 import { generateText } from "ai";
 import { db } from "../../db/db";
+
+let MODEL_ID: string = ""
+
+if (ai_provider == "groq") {
+  MODEL_ID = 'llama-3.3-70b-versatile';
+} else {
+  MODEL_ID = process.env.OPENAI_FILTER_MODEL || "gpt-4.1-mini"
+}
 
 const makeSystemPrompt = (schemaDescription: string) =>
   `
@@ -95,7 +104,7 @@ export async function generateQuery(request: Request) {
 
     // Generate the SQL query using Groq
     const { text: query } = await generateText({
-      model: groq("llama-3.3-70b-versatile"),
+      model: aiClient(MODEL_ID),
       messages: [
         {
           role: "system",

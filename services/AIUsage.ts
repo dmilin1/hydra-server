@@ -19,6 +19,18 @@ const MODEL_COSTS = {
     inputTokenCost: 0.1 / 1_000_000,
     outputTokenCost: 0.5 / 1_000_000,
   },
+  "openai/gpt-4.1-mini": {
+    inputTokenCost: 0.4 / 1_000_000,
+    outputTokenCost: 1.6 / 1_000_000,
+  },
+  "openai/gpt-4.1": {
+    inputTokenCost: 2.0 / 1_000_000,
+    outputTokenCost: 8.0 / 1_000_000,
+  },
+  "others": { // catch-all for models not in the list
+    inputTokenCost: 0.0 / 1_000_000,
+    outputTokenCost: 0.0 / 1_000_000,
+  },
 };
 
 const MONTHLY_COST_LIMIT = 2.0;
@@ -31,7 +43,8 @@ export class AIUsage {
   ) {
     const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
 
-    const modelCost = MODEL_COSTS[modelId];
+    // Get model cost, or catch all
+    const modelCost = MODEL_COSTS[modelId] || MODEL_COSTS.others;
     const spend =
       (usage.inputTokens ?? 0) * modelCost.inputTokenCost +
       (usage.outputTokens ?? 0) * modelCost.outputTokenCost;

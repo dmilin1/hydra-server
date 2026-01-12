@@ -1,9 +1,25 @@
 import { z } from "zod";
 import { verifySubscription } from "../../middleware/subscription";
-import { groq } from "../../utils/models";
+import { aiClient } from "../../utils/models";
+import { ai_provider } from "../../utils/models";
 import { generateObject } from "ai";
 import { AIUsage } from "../../services/AIUsage";
 
+let providerConfig = {};
+
+if (ai_provider == 'groq') {
+  providerConfig = {
+    groq: {
+      structuredOutputs: false,
+    },
+  };
+} else {
+  providerConfig = {
+    openai: {
+      structuredOutputs: false,
+    },
+  };
+}
 const postSchema = z.object({
   id: z.string(),
   subreddit: z.string(),
@@ -19,7 +35,8 @@ const filterPostsSchema = z.object({
   posts: z.array(postSchema),
 });
 
-const responseSchema = z.record(z.string(), z.boolean());
+const responseSchema = z.object({}).catchall(z.boolean());
+
 
 const systemPrompt = `
 You are a helpful assistant that filters Reddit posts based on a user's description. These are the posts a user does not want to see.
@@ -58,7 +75,13 @@ Text: ${post.text}
   .join("\n")}
 `;
 
-const MODEL_ID = "llama-3.1-8b-instant";
+let MODEL_ID: string = ""
+
+if (ai_provider == "groq") {
+  MODEL_ID = 'llama-3.1-8b-instant';
+} else {
+  MODEL_ID = process.env.OPENAI_FILTER_MODEL || "gpt-4.1-mini"
+}
 
 export async function filterPosts(req: Request) {
   const body = await req.json();
@@ -75,8 +98,10 @@ export async function filterPosts(req: Request) {
   }
 
   // Generate the filtered posts using Groq
+
+
   const { object, usage } = await generateObject({
-    model: groq(MODEL_ID),
+    model: aiClient(MODEL_ID),
     maxOutputTokens: 1_000,
     schema: responseSchema,
     messages: [
@@ -90,11 +115,10 @@ export async function filterPosts(req: Request) {
       },
     ],
     providerOptions: {
-      groq: {
-        structuredOutputs: false,
-      },
+      ...providerConfig
     },
   });
+
 
   await AIUsage.trackUsage(customerId, MODEL_ID, usage);
 

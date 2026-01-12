@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { verifySubscription } from "../../middleware/subscription";
-import { groq } from "../../utils/models";
+import { aiClient } from "../../utils/models";
+import { ai_provider } from "../../utils/models";
 import { generateText } from "ai";
 import { AIUsage } from "../../services/AIUsage";
 
@@ -27,7 +28,13 @@ const makeUserPrompt = (
   ${comments.map((comment, index) => `${index + 1}. ${comment}`).join("\n")}
 `;
 
-const MODEL_ID = "openai/gpt-oss-20b";
+let MODEL_ID: string = ""
+
+if (ai_provider == "groq") {
+  MODEL_ID = 'openai/gpt-oss-20b';
+} else {
+  MODEL_ID = process.env.OPENAI_SUMMARY_MODEL || "gpt-4.1-mini"
+}
 
 export async function summarizeComments(req: Request) {
   const body = await req.json();
@@ -45,7 +52,7 @@ export async function summarizeComments(req: Request) {
 
   // Generate the summary using Groq
   const { text, usage } = await generateText({
-    model: groq(MODEL_ID),
+    model: aiClient(MODEL_ID),
     maxOutputTokens: 1_000,
     messages: [
       {
