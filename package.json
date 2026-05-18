@@ -12,9 +12,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",
-    "@flydotio/dockerfile": "^0.7.10",
     "@types/bun": "latest",
-    "drizzle-kit": "^0.30.5",
+    "drizzle-kit": "0.31.10",
     "eslint": "^9.22.0",
     "eslint-config-prettier": "^10.1.1",
     "globals": "^16.0.0",
@@ -28,7 +27,7 @@
     "@ai-sdk/groq": "^2.0.17",
     "@ai-sdk/openai": "^2.0.88",
     "ai": "^5.0.128",
-    "drizzle-orm": "^0.40.0",
+    "drizzle-orm": "0.45.2",
     "expo-server-sdk": "^3.14.0",
     "zod": "^4.1.5"
   }
