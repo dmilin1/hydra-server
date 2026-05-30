@@ -31,6 +31,7 @@ export default class Proxy {
   private static badProxies: { [address: string]: number } = {};
   private static lastUpdateAt: number = 0;
   private static nextProxyIndex: number = 0;
+  private static inFlightRefresh: Promise<string[]> | null = null;
 
   static async getProxies() {
     if (
@@ -38,16 +39,32 @@ export default class Proxy {
       Date.now() - this.lastUpdateAt < PROXY_UPDATE_INTERVAL
     )
       return this.proxies;
-    const response = await fetch(
-      "https://proxy.webshare.io/api/v2/proxy/list/?mode=direct&page=1&page_size=100",
-      {
+    // Single-flight: concurrent callers share one in-flight refresh instead of
+    // each launching their own (the worker pool runs up to 10 in parallel).
+    if (!this.inFlightRefresh) {
+      this.inFlightRefresh = this.refreshProxies().finally(() => {
+        this.inFlightRefresh = null;
+      });
+    }
+    return this.inFlightRefresh;
+  }
+
+  private static async refreshProxies() {
+    const results: ProxyResponseItem[] = [];
+    let nextUrl: string | null =
+      "https://proxy.webshare.io/api/v2/proxy/list/?mode=direct&page=1&page_size=100";
+    while (nextUrl) {
+      const response = await fetch(nextUrl, {
         headers: {
           Authorization: `Token ${process.env.WEBSHARE_TOKEN}`,
         },
-      },
-    );
-    const res = (await response.json()) as ProxyResponse;
-    const freshProxyList = res.results.map(
+      });
+      const res = (await response.json()) as ProxyResponse;
+      results.push(...res.results);
+      console.log(`Fetched ${results.length} proxies`);
+      nextUrl = res.next;
+    }
+    const freshProxyList = results.map(
       (proxy) =>
         `http://${proxy.username}:${proxy.password}@${proxy.proxy_address}:${proxy.port}`,
     );
