@@ -1,44 +1,56 @@
 # syntax = docker/dockerfile:1
 
-# Adjust BUN_VERSION as desired
-ARG BUN_VERSION=1.3.5
+ARG BUN_VERSION=1
 FROM oven/bun:${BUN_VERSION}-slim AS base
 
 LABEL fly_launch_runtime="Bun"
 
-# Bun app lives here
 WORKDIR /app
-
-# Set production environment
 ENV NODE_ENV="production"
 
-
-# Throw-away build stage to reduce size of final image
+# --- Build stage ---
 FROM base AS build
 
-# Install packages needed to build node modules
+# Install build tools (for any native modules; removed from final image)
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y build-essential pkg-config python-is-python3
+    apt-get install --no-install-recommends -y build-essential pkg-config python-is-python3 && \
+    rm -rf /var/lib/apt/lists/*
 
-# Copy application code first
-COPY . .
+# Backend dependencies (cached until root package.json/bun.lock change)
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 
-# Build frontend
+# Frontend dependencies (cached until frontend/package.json or frontend/bun.lock change)
+COPY frontend/package.json frontend/bun.lock ./frontend/
 WORKDIR /app/frontend
-RUN bun install
+RUN bun install --frozen-lockfile
+
+# Frontend source + build (cached until frontend source changes)
+COPY frontend/ ./
 RUN bun run build
 
-# Clean up and install dependencies
+# Backend source (changes only on backend edits; cached otherwise)
 WORKDIR /app
-RUN rm -rf /app/frontend
-RUN bun install
+COPY . .
 
-# Final stage for app image
+# Remove frontend source (build output is already in /app/dist)
+RUN rm -rf /app/frontend
+
+# --- Production stage ---
 FROM base
 
-# Copy built application
+# Install curl for healthcheck
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y curl && \
+    rm -rf /var/lib/apt/lists/*
+
 COPY --from=build /app /app
 
-# Start the server by default, this can be overwritten at runtime
+# Create data directory for SQLite (overlayed by volume mounts at runtime)
+RUN mkdir -p /data
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/api/status || exit 1
+
 EXPOSE 3000
-CMD [ "bun", "index.ts" ]
+CMD ["bun", "index.ts"]

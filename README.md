@@ -52,7 +52,7 @@ services:
 
 ```env
 # Get your API key from https://console.groq.com/keys
-GROQ_API_KEY=your_groq_api_key_here 
+GROQ_API_KEY=your_groq_api_key_here
 # Generate a key with `openssl rand -hex 32`
 ENCRYPTION_KEY=your_32_byte_encryption_key_here
 # Set a strong password to access the dashboard
@@ -62,23 +62,24 @@ IS_CUSTOM_SERVER=true
 
 #### Environment Variables
 
-|Variable|Default Value|Remarks|
-|---|---|---|
-|GROQ_API_KEY|---|GROQ API Key for AI features. Only needed if AI_PROVIDER is "groq" (optional)|
-|ENCRYPTION_KEY|---|Generate with `openssl rand -hex 32` (required)|
-|DASHBOARD_PASSWORD|---|Password to access dashboard (required)|
-|IS_CUSTOM_SERVER|---|Must be set to true for self hosted server (required)|
-|AI_PROVIDER|groq| Specify the AI provider to use for post/comments summary, database query and posts filtering (optional)|
+| Variable           | Default Value | Remarks                                                                                                 |
+| ------------------ | ------------- | ------------------------------------------------------------------------------------------------------- |
+| GROQ_API_KEY       | ---           | GROQ API Key for AI features. Only needed if AI_PROVIDER is "groq" (optional)                           |
+| ENCRYPTION_KEY     | ---           | Generate with `openssl rand -hex 32` (required)                                                         |
+| DASHBOARD_PASSWORD | ---           | Password to access dashboard (required)                                                                 |
+| IS_CUSTOM_SERVER   | ---           | Must be set to true for self hosted server (required)                                                   |
+| AI_PROVIDER        | groq          | Specify the AI provider to use for post/comments summary, database query and posts filtering (optional) |
 
 Below environment variables need to be set only if `AI_PROVIDER` is set to `openai`
 
-|Variable|Default Value|Remarks|
-|---|---|---|
-|OPENAI_BASE_URL|`https://api.openai.com/v1`|Base URL for OpenAI.|
-|OPENAI_API_KEY|---|OpenAI API key. (optional)|
-|OPENAI_SUMMARY_MODEL|gpt-4.1-mini|Model used for posts/comments summary. Must be supported by provider.|
-|OPENAI_QUERY_MODEL|gpt-4.1-mini|Model used for database query. Must be supported by provider.|
-|OPENAI_FILTER_MODEL|gpt-4.1-mini|Model used for posts filtering. Must be supported by provider.|
+| Variable             | Default Value               | Remarks                                                               |
+| -------------------- | --------------------------- | --------------------------------------------------------------------- |
+| OPENAI_BASE_URL      | `https://api.openai.com/v1` | Base URL for OpenAI.                                                  |
+| OPENAI_API_KEY       | ---                         | OpenAI API key. (optional)                                            |
+| OPENAI_SUMMARY_MODEL | gpt-4.1-mini                | Model used for posts/comments summary. Must be supported by provider. |
+| OPENAI_QUERY_MODEL   | gpt-4.1-mini                | Model used for database query. Must be supported by provider.         |
+| OPENAI_FILTER_MODEL  | gpt-4.1-mini                | Model used for posts filtering. Must be supported by provider.        |
+
 ---
 
 ### Manual Setup
@@ -107,7 +108,7 @@ Create a `.env` file in the root directory with the following variables:
 
 ```env
 # Get your API key from https://console.groq.com/keys
-GROQ_API_KEY=your_groq_api_key_here 
+GROQ_API_KEY=your_groq_api_key_here
 # Generate a key with `openssl rand -hex 32`
 ENCRYPTION_KEY=your_32_byte_encryption_key_here
 # Set a strong password to access the dashboard
