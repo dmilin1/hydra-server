@@ -2,7 +2,7 @@ import { z } from "zod";
 import { verifySubscription } from "../../middleware/subscription";
 import { aiClient } from "../../utils/models";
 import { ai_provider } from "../../utils/models";
-import { generateObject } from "ai";
+import { generateText } from "ai";
 import { AIUsage, type ModelId } from "../../services/AIUsage";
 
 let providerConfig = {};
@@ -11,6 +11,7 @@ if (ai_provider == "groq") {
   providerConfig = {
     groq: {
       structuredOutputs: false,
+      strictJsonSchema: false,
     },
   };
 } else {
@@ -77,7 +78,7 @@ Text: ${post.text}
 let MODEL_ID: ModelId;
 
 if (ai_provider == "groq") {
-  MODEL_ID = "llama-3.1-8b-instant";
+  MODEL_ID = "openai/gpt-oss-20b";
 } else {
   MODEL_ID =
     (process.env.OPENAI_FILTER_MODEL as ModelId) || "openai/gpt-4.1-mini";
@@ -97,33 +98,22 @@ export async function filterPosts(req: Request) {
     return new Response("Monthly usage limit exceeded", { status: 429 });
   }
 
-  // Generate the filtered posts using Groq
-
-  const { object, usage } = await generateObject({
+  const { text, usage } = await generateText({
     model: aiClient(MODEL_ID),
     maxOutputTokens: 1_000,
-    schema: responseSchema,
-    messages: [
-      {
-        role: "system",
-        content: systemPrompt,
-      },
-      {
-        role: "user",
-        content: makeUserPrompt(filterDescription, posts),
-      },
-    ],
-    providerOptions: {
-      ...providerConfig,
-    },
+    instructions: systemPrompt,
+    prompt: makeUserPrompt(filterDescription, posts),
+    providerOptions: providerConfig,
   });
+
+  const output = responseSchema.safeParse(JSON.parse(text)).data ?? {};
 
   await AIUsage.trackUsage(customerId, MODEL_ID, usage);
 
   // Make sure the response is a mapping of post IDs to boolean values
   const filteredPosts = posts.reduce(
     (acc, post) => {
-      acc[post.id] = object[post.id] ?? false;
+      acc[post.id] = output[post.id] ?? false;
       return acc;
     },
     {} as Record<string, boolean>,

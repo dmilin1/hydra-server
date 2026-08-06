@@ -58,16 +58,8 @@ export async function askQuestion(req: Request) {
 
   const { text } = await generateText({
     model: aiClient("openai/gpt-oss-120b"),
-    messages: [
-      {
-        role: "user",
-        content: userMessage,
-      },
-      {
-        role: "system",
-        content: systemPrompt,
-      },
-    ],
+    instructions: systemPrompt,
+    prompt: userMessage,
   });
 
   return new Response(JSON.stringify({ markdown: text }), {

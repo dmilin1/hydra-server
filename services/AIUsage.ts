@@ -39,13 +39,16 @@ const MONTHLY_COST_LIMIT = 2.0;
 export class AIUsage {
   static async trackUsage(
     customerId: string,
-    modelId: ModelId,
+    modelId: string,
     usage: LanguageModelUsage,
   ) {
     const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
 
     // Get model cost, or catch all
-    const modelCost = MODEL_COSTS[modelId] || MODEL_COSTS.others;
+    const modelCost =
+      modelId in MODEL_COSTS
+        ? MODEL_COSTS[modelId as ModelId]
+        : MODEL_COSTS.others;
     const spend =
       (usage.inputTokens ?? 0) * modelCost.inputTokenCost +
       (usage.outputTokens ?? 0) * modelCost.outputTokenCost;

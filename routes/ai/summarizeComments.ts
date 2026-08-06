@@ -54,16 +54,8 @@ export async function summarizeComments(req: Request) {
   const { text, usage } = await generateText({
     model: aiClient(MODEL_ID),
     maxOutputTokens: 1_000,
-    messages: [
-      {
-        role: "system",
-        content: systemPrompt,
-      },
-      {
-        role: "user",
-        content: makeUserPrompt(postTitle, postAuthor, postSummary, comments),
-      },
-    ],
+    instructions: systemPrompt,
+    prompt: makeUserPrompt(postTitle, postAuthor, postSummary, comments),
   });
 
   await AIUsage.trackUsage(customerId, MODEL_ID, usage);
