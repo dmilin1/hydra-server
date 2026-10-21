@@ -13,7 +13,7 @@ coverage
 # logs
 logs
 _.log
-report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+report.[0-9]_.[0-9]_.[0-9]_.json
 
 # dotenv environment variable files
 .env
@@ -36,3 +36,13 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 sqlite.db
 sqlite.db-shm
 sqlite.db-wal
+
+# Not needed at build time
+compose.yaml
+compose.dev.yaml
+.github/
+README.md
+.prettierrc
+.prettierignore
+eslint.config.js
+tailwind.config.js

@@ -54,16 +54,8 @@ export async function summarizePostDetails(req: Request) {
   const { text, usage } = await generateText({
     model: aiClient(MODEL_ID),
     maxOutputTokens: 1_000,
-    messages: [
-      {
-        role: "system",
-        content: systemPrompt,
-      },
-      {
-        role: "user",
-        content: makeUserPrompt(subreddit, postTitle, postAuthor, postText),
-      },
-    ],
+    instructions: systemPrompt,
+    prompt: makeUserPrompt(subreddit, postTitle, postAuthor, postText),
   });
 
   await AIUsage.trackUsage(customerId, MODEL_ID, usage);

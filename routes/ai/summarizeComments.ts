@@ -13,7 +13,7 @@ const summarizeCommentsSchema = z.object({
   postSummary: z.string(),
 });
 
-const systemPrompt = `You are a helpful assistant that summarizes Reddit comments. Provide a concise summary of the main points, ideas, and opinions expressed in the comments in one paragraph. Do not refer to the comments by number.`;
+const systemPrompt = `You are a helpful assistant that summarizes Reddit comments. Provide a concise summary of the main points, ideas, and opinions expressed in the comments in one paragraph. Do not refer to the comments by number. If the author is "AutoModerator", exclude their comment if the comment looks like template text.`;
 
 const makeUserPrompt = (
   postTitle: string,
@@ -54,16 +54,8 @@ export async function summarizeComments(req: Request) {
   const { text, usage } = await generateText({
     model: aiClient(MODEL_ID),
     maxOutputTokens: 1_000,
-    messages: [
-      {
-        role: "system",
-        content: systemPrompt,
-      },
-      {
-        role: "user",
-        content: makeUserPrompt(postTitle, postAuthor, postSummary, comments),
-      },
-    ],
+    instructions: systemPrompt,
+    prompt: makeUserPrompt(postTitle, postAuthor, postSummary, comments),
   });
 
   await AIUsage.trackUsage(customerId, MODEL_ID, usage);

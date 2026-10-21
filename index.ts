@@ -11,7 +11,7 @@ startSchedules();
 
 const server = serve({
   port: 3000,
-  development: true,
+  development: process.env.NODE_ENV !== "production",
   routes: {
     // Handle CORS preflight for API routes
     "/api/*": {
