@@ -3,6 +3,7 @@ import { authenticateRequest } from "../../middleware/auth";
 import { corsHeaders } from "../../middleware/cors";
 import { aiClient } from "../../utils/models";
 import { ai_provider } from "../../utils/models";
+import { getAIRequestOptions } from "../../utils/aiRequestOptions";
 import { generateText } from "ai";
 import { db } from "../../db/db";
 
@@ -11,7 +12,7 @@ let MODEL_ID: string = "";
 if (ai_provider == "groq") {
   MODEL_ID = "llama-3.3-70b-versatile";
 } else {
-  MODEL_ID = process.env.OPENAI_FILTER_MODEL || "gpt-4.1-mini";
+  MODEL_ID = process.env.OPENAI_QUERY_MODEL || "gpt-4.1-mini";
 }
 
 const makeSystemPrompt = (schemaDescription: string) =>
@@ -115,6 +116,7 @@ export async function generateQuery(request: Request) {
           content: description,
         },
       ],
+      ...getAIRequestOptions(request, "generate-query", { description }),
     });
 
     return Response.json({ query }, { headers: corsHeaders });

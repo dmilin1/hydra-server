@@ -8,6 +8,13 @@ const embeddingRequestSchema = z.object({
 });
 
 export async function createEmbedding(req: Request) {
+  if (!embeddingClient) {
+    return new Response(
+      "Embeddings are not configured. Set OPENAI_EMBEDDING_API_KEY and, if needed, OPENAI_EMBEDDING_BASE_URL.",
+      { status: 503 },
+    );
+  }
+
   const throttle = new Throttle("createEmbedding", {
     maxRequests: 1_000,
     timeWindowMiliseconds: 60 * 60 * 1_000,
