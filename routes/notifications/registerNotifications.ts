@@ -1,3 +1,4 @@
+import { and, eq, notInArray } from "drizzle-orm";
 import { z } from "zod";
 import { customers, redditAccounts } from "../../db/schema";
 import { db } from "../../db/db";
@@ -53,9 +54,22 @@ export async function registerNotifications(req: Request) {
           set: {
             username: account.username,
             session: encryptedSession,
+            // Check right away, even if a session error had paused checks.
+            lastCheckedAt: null,
           },
         });
     }),
+  );
+
+  // The app sends every account it has, so the rest were removed from it.
+  await db.delete(redditAccounts).where(
+    and(
+      eq(redditAccounts.customerId, customerId),
+      notInArray(
+        redditAccounts.username,
+        accounts.map((account) => account.username),
+      ),
+    ),
   );
 
   return new Response("success");

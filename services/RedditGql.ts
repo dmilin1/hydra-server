@@ -15,6 +15,12 @@ import Proxy from "./Proxy";
 
 export type GqlOperation = { name: string; hash: string };
 
+/**
+ * Reddit doesn't accept the account's session (expired, revoked, or the user
+ * logged out). Only the app can fix it, by registering a new session.
+ */
+export class SessionError extends Error {}
+
 type RedditAccount = typeof redditAccounts.$inferSelect;
 type SessionCookie = { name: string; value: string };
 
@@ -66,10 +72,20 @@ async function requestToken(account: RedditAccount): Promise<string> {
       headers: { "User-Agent": userAgent },
     });
     if (loggedOut.response.ok) {
-      throw new Error("Reddit rejected the session. It may have expired.");
+      throw new SessionError(
+        "Reddit rejected the session. It may have expired.",
+      );
     }
     home.markProxyAsBad();
     throw new Error(`Failed to load reddit.com: [${home.response.status}]`);
+  }
+  // Without these cookies no token is issued, whatever the session. A proxy
+  // Reddit is wary of gets a challenge page instead, which sets none.
+  if (!cookies.has("csrf_token")) {
+    home.markProxyAsBad();
+    throw new Error(
+      "reddit.com didn't set its cookies. The proxy may be blocked.",
+    );
   }
   // Reddit rejects the empty body (HTTP 400) but still sets token_v2.
   await send("https://www.reddit.com/svc/shreddit/graphql", {
@@ -79,7 +95,7 @@ async function requestToken(account: RedditAccount): Promise<string> {
   });
   const token = cookies.get("token_v2");
   if (!token) {
-    throw new Error(
+    throw new SessionError(
       "Reddit did not issue a token. The session may have expired.",
     );
   }

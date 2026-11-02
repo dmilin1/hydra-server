@@ -3,7 +3,7 @@ import { db } from "../db/db";
 import { customers, redditAccounts } from "../db/schema";
 import { eq } from "drizzle-orm";
 import PushNotifications from "../services/PushNotifications";
-import { redditGql } from "../services/RedditGql";
+import { redditGql, SessionError } from "../services/RedditGql";
 
 /**
  * Reddit's inbox is now a notification feed (private messages moved to chat),
@@ -23,6 +23,8 @@ const REPLY_TYPES = new Set([
   "COMMENT_REPLY",
   "USERNAME_MENTION",
 ]);
+
+const HOUR_MS = 1000 * 60 * 60;
 
 // When the server switched to the new inbox. Older notifications were handled
 // (or not) by the old one, so they're never sent.
@@ -135,13 +137,35 @@ export default class CheckForMessages extends Task<
       );
     }
 
+    try {
+      await this.check(redditAccount);
+    } catch (e) {
+      if (e instanceof SessionError) {
+        // Retrying can't help until the app registers a new session (which
+        // clears this), so check rarely. The random spread keeps these
+        // accounts from all coming back at once.
+        await db
+          .update(redditAccounts)
+          .set({
+            lastCheckedAt: new Date(
+              Date.now() + (11 + Math.random()) * HOUR_MS,
+            ).toISOString(),
+          })
+          .where(eq(redditAccounts.id, redditAccount.id))
+          .execute();
+      }
+      throw e;
+    }
+  }
+
+  async check(redditAccount: typeof redditAccounts.$inferSelect) {
     const data = await redditGql(redditAccount, GetInboxNotificationFeedV2, {
       pageSize: PAGE_SIZE,
       includeAnnouncement: false,
     });
     // A very old session still gets a token, but not one for the account.
     if (!data.notificationInboxV2) {
-      throw new Error(
+      throw new SessionError(
         "Reddit returned no inbox. The session may have expired.",
       );
     }
