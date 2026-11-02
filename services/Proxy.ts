@@ -128,17 +128,19 @@ export default class Proxy {
     }
   }
 
+  /** Uses init.proxy if given (e.g. to retry through the same one). */
   static async fetch(
     request: string | URL | Request,
     init?: BunFetchRequestInit,
   ) {
-    const proxy = await this.getProxy();
+    const proxy = init?.proxy ?? (await this.getProxy());
     const response = await fetch(request, {
       ...init,
       proxy,
     });
     return {
       response,
+      proxy,
       markProxyAsBad: () => (proxy ? this.handleBadProxy(proxy) : undefined),
     };
   }

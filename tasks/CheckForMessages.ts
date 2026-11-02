@@ -2,34 +2,117 @@ import Task from "./Task";
 import { db } from "../db/db";
 import { customers, redditAccounts } from "../db/schema";
 import { eq } from "drizzle-orm";
-import { decrypt } from "../utils/crypto";
 import PushNotifications from "../services/PushNotifications";
-import Proxy from "../services/Proxy";
-import { generateUserAgent } from "../utils/userAgent";
+import { redditGql } from "../services/RedditGql";
 
-type InboxItem = CommentReply | Message;
-
-export type CommentReply = {
-  id: string;
-  name: string;
-  type: "commentReply";
-  author: string;
-  new: boolean;
-  postTitle: string;
-  contextLink: string;
-  subreddit: string;
-  text: string;
+/**
+ * Reddit's inbox is now a notification feed (private messages moved to chat),
+ * mostly Reddit's own suggestions. Like the app, only replies and username
+ * mentions are kept.
+ */
+const GetInboxNotificationFeedV2 = {
+  name: "GetInboxNotificationFeedV2",
+  hash: "bfb3b015837f416e9ceb15d8c8082cd6bfc727124e8ac969eb25332c331ee614",
 };
 
-export type Message = {
+// The app's page size, so the badge counts the same replies as the app does.
+const PAGE_SIZE = 50;
+
+const REPLY_TYPES = new Set([
+  "POST_REPLY",
+  "COMMENT_REPLY",
+  "USERNAME_MENTION",
+]);
+
+// When the server switched to the new inbox. Older notifications were handled
+// (or not) by the old one, so they're never sent.
+const NEW_INBOX_START = Date.parse("2026-11-02T03:41:22.000Z");
+
+type Notification = {
   id: string;
-  name: string;
-  type: "message";
-  author: string;
-  subject: string;
-  new: boolean;
-  text: string;
+  title?: string;
+  body?: string;
+  sentAt: string;
+  readAt: string | null;
+  deeplinkUrl?: string;
+  comment?: {
+    id: string;
+    content?: { preview?: string };
+    authorInfo?: { displayName?: string };
+  } | null;
+  context?: { messageType?: string; post?: { title?: string } } | null;
 };
+
+/** A reply or mention, merged per comment: a reply that also pings the user arrives as both. */
+type InboxReply = {
+  commentId: string;
+  unread: boolean;
+  sentAt: number;
+  title: string;
+  body: string;
+};
+
+// "2026-10-25T23:40:08.323000+0000" -> "2026-10-25T23:40:08.323+00:00"
+function parseTime(time: string): number {
+  return Date.parse(
+    time.replace(/(\.\d{3})\d+/, "$1").replace(/([+-]\d{2})(\d{2})$/, "$1:$2"),
+  );
+}
+
+/** The comment id a notification is about, if it's a reply or mention. */
+function getCommentId(node: Notification): string | undefined {
+  const type = node.context?.messageType ?? "";
+  if (!REPLY_TYPES.has(type) && !(node.comment && type.includes("REPLY"))) {
+    return undefined;
+  }
+  if (node.comment?.id) return node.comment.id;
+  // Mentions have no comment, but link to it: .../comments/<post>/<slug>/<id>/
+  const match = (node.deeplinkUrl ?? "").match(
+    /\/comments\/[^/]+\/[^/]+\/([a-z0-9]+)\/?(?:[?#].*)?$/i,
+  );
+  return match ? `t1_${match[1]}` : undefined;
+}
+
+/**
+ * "<author> in <post title>" with the comment as the body. Mentions don't
+ * come with their comment or post, so they use Reddit's own wording.
+ */
+function getText(
+  node: Notification,
+): { title: string; body: string } | undefined {
+  const author = node.comment?.authorInfo?.displayName;
+  const postTitle = node.context?.post?.title;
+  if (author && postTitle) {
+    return {
+      title: `${author} in ${postTitle}`,
+      body: node.comment?.content?.preview ?? "",
+    };
+  }
+  if (node.title) {
+    return { title: node.title, body: node.body ?? "" };
+  }
+}
+
+function getReplies(nodes: Notification[]): InboxReply[] {
+  const byComment = new Map<string, InboxReply>();
+  for (const node of nodes) {
+    const commentId = getCommentId(node);
+    const text = getText(node);
+    if (!commentId || !text) continue;
+    const unread = !node.readAt;
+    const sentAt = parseTime(node.sentAt);
+    const existing = byComment.get(commentId);
+    if (!existing) {
+      byComment.set(commentId, { commentId, unread, sentAt, ...text });
+      continue;
+    }
+    existing.unread &&= unread;
+    existing.sentAt = Math.max(existing.sentAt, sentAt);
+    // The reply's text is more specific than the mention's.
+    if (node.comment) Object.assign(existing, text);
+  }
+  return [...byComment.values()];
+}
 
 type CheckForMessagesData = {
   redditAccountId: number;
@@ -52,56 +135,33 @@ export default class CheckForMessages extends Task<
       );
     }
 
-    const session = JSON.parse(decrypt(redditAccount.session));
-
-    const { response, markProxyAsBad } = await Proxy.fetch(
-      "https://www.reddit.com/message/inbox.json?limit=10",
-      {
-        headers: {
-          cookie: `${session.name}=${session.value}`,
-          "User-Agent": generateUserAgent(),
-        },
-      },
-    );
-
-    if (response.status >= 400) {
-      markProxyAsBad?.();
+    const data = await redditGql(redditAccount, GetInboxNotificationFeedV2, {
+      pageSize: PAGE_SIZE,
+      includeAnnouncement: false,
+    });
+    // A very old session still gets a token, but not one for the account.
+    if (!data.notificationInboxV2) {
       throw new Error(
-        `Failed to fetch inbox: [${response.status}] ${response.statusText}`,
+        "Reddit returned no inbox. The session may have expired.",
       );
     }
+    const nodes: Notification[] = (
+      data.notificationInboxV2.elements?.edges ?? []
+    )
+      .map((edge: { node?: Notification }) => edge?.node)
+      .filter((node: Notification | undefined) => node?.id && node.sentAt);
+    const replies = getReplies(nodes);
+    const unreadCount = replies.filter((reply) => reply.unread).length;
 
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let json: any;
-    try {
-      json = await response.json();
-    } catch (_error) {
-      markProxyAsBad?.();
-      throw new Error(
-        `Failed to parse inbox. Server returned non-JSON response.`,
-      );
-    }
-
-    if (!json?.data?.children) {
-      // Empty inbox
-      return;
-    }
-
-    let inboxItems: InboxItem[] = json.data.children
-      .map((child: unknown) => this.formatInboxItem(child))
-      .filter((item: InboxItem | undefined) => item !== undefined);
-
-    const unreadCount = inboxItems.filter((item) => item.new).length;
-
-    const lastSentItemIndex = inboxItems.findIndex(
-      (item) => item.id === redditAccount.lastMessageId,
+    // lastMessageId holds the sentAt of the newest notification sent. Before
+    // the new inbox it held an old message id, which doesn't parse.
+    const lastSentAt = Date.parse(redditAccount.lastMessageId ?? "") || 0;
+    const toSend = replies.filter(
+      (reply) =>
+        reply.unread && reply.sentAt > Math.max(NEW_INBOX_START, lastSentAt),
     );
 
-    inboxItems = inboxItems
-      .slice(0, lastSentItemIndex === -1 ? 100 : lastSentItemIndex)
-      .filter((item) => item.new);
-
-    if (inboxItems.length < 1) {
+    if (toSend.length < 1) {
       await db
         .update(redditAccounts)
         .set({
@@ -124,84 +184,28 @@ export default class CheckForMessages extends Task<
       );
     }
 
-    await Promise.all(
-      inboxItems.map(async (item) => {
-        if (!customer.pushToken) return;
-        if (item.type === "commentReply") {
-          this.sendCommentReplyNotification(
-            customer.pushToken,
-            item,
-            unreadCount,
-          );
-        } else if (item.type === "message") {
-          this.sendMessageNotification(customer.pushToken, item, unreadCount);
-        }
-      }),
+    // A failed push mustn't stop the watermark below, or the next check would
+    // send the others again.
+    await Promise.allSettled(
+      toSend.map((reply) =>
+        PushNotifications.send(
+          customer.pushToken!,
+          reply.title,
+          reply.body,
+          unreadCount,
+        ),
+      ),
     );
-
-    const newestMessage = inboxItems[0];
-    if (!newestMessage) return;
 
     await db
       .update(redditAccounts)
       .set({
-        lastMessageId: newestMessage.id,
+        lastMessageId: new Date(
+          Math.max(...toSend.map((reply) => reply.sentAt)),
+        ).toISOString(),
         lastCheckedAt: new Date().toISOString(),
       })
       .where(eq(redditAccounts.id, redditAccount.id))
       .execute();
-  }
-
-  //eslint-disable-next-line @typescript-eslint/no-explicit-any
-  formatInboxItem(child: any): InboxItem | undefined {
-    if (child.kind === "t1") {
-      return {
-        id: child.data.id,
-        name: child.data.name,
-        type: "commentReply",
-        author: child.data.author,
-        new: child.data.new,
-        postTitle: child.data.link_title,
-        contextLink: child.data.context,
-        subreddit: child.data.subreddit,
-        text: child.data.body,
-      };
-    } else if (child.kind === "t4") {
-      return {
-        id: child.data.id,
-        name: child.data.name,
-        type: "message",
-        author: child.data.author,
-        subject: child.data.subject,
-        new: child.data.new,
-        text: child.data.body,
-      };
-    }
-  }
-
-  sendCommentReplyNotification(
-    pushToken: string,
-    commentReply: CommentReply,
-    unreadCount: number,
-  ) {
-    PushNotifications.send(
-      pushToken,
-      `${commentReply.author} in ${commentReply.postTitle}`,
-      commentReply.text,
-      unreadCount,
-    );
-  }
-
-  sendMessageNotification(
-    pushToken: string,
-    message: Message,
-    unreadCount: number,
-  ) {
-    PushNotifications.send(
-      pushToken,
-      `Message from ${message.author}`,
-      message.text,
-      unreadCount,
-    );
   }
 }
