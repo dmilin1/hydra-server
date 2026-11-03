@@ -2,6 +2,7 @@ import { z } from "zod";
 import { verifySubscription } from "../../middleware/subscription";
 import { aiClient } from "../../utils/models";
 import { ai_provider } from "../../utils/models";
+import { getAIRequestOptions } from "../../utils/aiRequestOptions";
 import { generateText } from "ai";
 import { AIUsage, type ModelId } from "../../services/AIUsage";
 import { jsonrepair } from "jsonrepair";
@@ -105,6 +106,10 @@ export async function filterPosts(req: Request) {
     instructions: systemPrompt,
     prompt: makeUserPrompt(filterDescription, posts),
     providerOptions: providerConfig,
+    ...getAIRequestOptions(req, "filter-posts", {
+      customerId,
+      filterDescription,
+    }),
   });
 
   const output =

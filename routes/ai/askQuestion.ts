@@ -2,6 +2,8 @@ import { z } from "zod";
 import { generateText } from "ai";
 import { Throttle } from "../../services/Throttle";
 import { aiClient } from "../../utils/models";
+import { ai_provider } from "../../utils/models";
+import { getAIRequestOptions } from "../../utils/aiRequestOptions";
 
 const askQuestionSchema = z.object({
   question: z.string(),
@@ -32,6 +34,14 @@ Answer the user's question using ONLY the information from the provided document
 Be friendly, clear, and direct. Avoid unnecessary preambles like "Based on the documents..." - just provide the answer.
 `;
 
+let MODEL_ID: string = "";
+
+if (ai_provider == "groq") {
+  MODEL_ID = "openai/gpt-oss-120b";
+} else {
+  MODEL_ID = process.env.OPENAI_QUERY_MODEL || "gpt-4.1-mini";
+}
+
 const makeUserPrompt = (question: string, docs: string[]) => {
   return `## Documentation
 
@@ -57,9 +67,10 @@ export async function askQuestion(req: Request) {
   const userMessage = makeUserPrompt(question, docs);
 
   const { text } = await generateText({
-    model: aiClient("openai/gpt-oss-120b"),
+    model: aiClient(MODEL_ID),
     instructions: systemPrompt,
     prompt: userMessage,
+    ...getAIRequestOptions(req, "ask-question", { question, docs }),
   });
 
   return new Response(JSON.stringify({ markdown: text }), {

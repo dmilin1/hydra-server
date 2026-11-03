@@ -2,11 +2,13 @@ import { z } from "zod";
 import { verifySubscription } from "../../middleware/subscription";
 import { aiClient } from "../../utils/models";
 import { ai_provider } from "../../utils/models";
+import { getAIRequestOptions } from "../../utils/aiRequestOptions";
 import { generateText } from "ai";
 import { AIUsage } from "../../services/AIUsage";
 
 const summarizePostDetailsSchema = z.object({
   customerId: z.string(),
+  postId: z.string().optional(),
   subreddit: z.string(),
   postTitle: z.string(),
   postAuthor: z.string(),
@@ -37,7 +39,7 @@ if (ai_provider == "groq") {
 
 export async function summarizePostDetails(req: Request) {
   const body = await req.json();
-  const { customerId, subreddit, postTitle, postAuthor, postText } =
+  const { customerId, postId, subreddit, postTitle, postAuthor, postText } =
     summarizePostDetailsSchema.parse(body);
   const isSubscribed = await verifySubscription(customerId);
   if (!isSubscribed) {
@@ -56,6 +58,10 @@ export async function summarizePostDetails(req: Request) {
     maxOutputTokens: 1_000,
     instructions: systemPrompt,
     prompt: makeUserPrompt(subreddit, postTitle, postAuthor, postText),
+    ...getAIRequestOptions(req, "summarize-post-details", {
+      customerId,
+      post: postId ? { postId } : { subreddit, postTitle, postAuthor },
+    }),
   });
 
   await AIUsage.trackUsage(customerId, MODEL_ID, usage);

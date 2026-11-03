@@ -12,3 +12,14 @@ services:
       - .env
     environment:
       - IS_CUSTOM_SERVER=true
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles:
+      - embeddings
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  ollama-data:

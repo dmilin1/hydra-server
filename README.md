@@ -70,7 +70,13 @@ IS_CUSTOM_SERVER=true
 | IS_CUSTOM_SERVER   | ---           | Must be set to true for self hosted server (required)                                                   |
 | AI_PROVIDER        | groq          | Specify the AI provider to use for post/comments summary, database query and posts filtering (optional) |
 
-Below environment variables need to be set only if `AI_PROVIDER` is set to `openai`
+Below environment variables need to be set only if `AI_PROVIDER` is set to `openai`.
+For OpenCode Go, set `OPENAI_BASE_URL=https://opencode.ai/zen/go/v1`, use your Go API key as
+`OPENAI_API_KEY`, and choose a Go model such as `gpt-6-luna` for the model variables.
+Hydra sends the session and User-Agent headers Go recommends. It forwards an incoming
+`x-opencode-session` when provided; otherwise it derives a stable opaque ID from the operation
+and its identity (post ID for post summaries/comments, or the filter description for filtering).
+Post text and comment changes therefore do not change the session when a post ID is available.
 
 | Variable             | Default Value               | Remarks                                                               |
 | -------------------- | --------------------------- | --------------------------------------------------------------------- |
@@ -79,6 +85,18 @@ Below environment variables need to be set only if `AI_PROVIDER` is set to `open
 | OPENAI_SUMMARY_MODEL | gpt-4.1-mini                | Model used for posts/comments summary. Must be supported by provider. |
 | OPENAI_QUERY_MODEL   | gpt-4.1-mini                | Model used for database query. Must be supported by provider.         |
 | OPENAI_FILTER_MODEL  | gpt-4.1-mini                | Model used for posts filtering. Must be supported by provider.        |
+
+OpenCode Go's documented API does not include embeddings. This checkout includes an optional
+local Ollama service for embeddings; it is kept on the Compose network and does not publish a
+port to the LAN. On ARM64 Raspberry Pi OS, enable it and download the small embedding model:
+
+```bash
+docker compose --profile embeddings up -d
+docker compose exec ollama ollama pull nomic-embed-text
+```
+
+The model is stored in the persistent `ollama-data` volume. CPU embedding inference works on
+Raspberry Pi but can be slower than a hosted API. The Go API key is not reused for embeddings.
 
 ---
 

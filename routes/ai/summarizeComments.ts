@@ -2,11 +2,13 @@ import { z } from "zod";
 import { verifySubscription } from "../../middleware/subscription";
 import { aiClient } from "../../utils/models";
 import { ai_provider } from "../../utils/models";
+import { getAIRequestOptions } from "../../utils/aiRequestOptions";
 import { generateText } from "ai";
 import { AIUsage } from "../../services/AIUsage";
 
 const summarizeCommentsSchema = z.object({
   customerId: z.string(),
+  postId: z.string().optional(),
   comments: z.array(z.string()),
   postTitle: z.string(),
   postAuthor: z.string(),
@@ -38,7 +40,7 @@ if (ai_provider == "groq") {
 
 export async function summarizeComments(req: Request) {
   const body = await req.json();
-  const { customerId, comments, postTitle, postAuthor, postSummary } =
+  const { customerId, postId, comments, postTitle, postAuthor, postSummary } =
     summarizeCommentsSchema.parse(body);
   const isSubscribed = await verifySubscription(customerId);
   if (!isSubscribed) {
@@ -56,6 +58,10 @@ export async function summarizeComments(req: Request) {
     maxOutputTokens: 1_000,
     instructions: systemPrompt,
     prompt: makeUserPrompt(postTitle, postAuthor, postSummary, comments),
+    ...getAIRequestOptions(req, "summarize-comments", {
+      customerId,
+      post: postId ? { postId } : { postTitle, postAuthor },
+    }),
   });
 
   await AIUsage.trackUsage(customerId, MODEL_ID, usage);
