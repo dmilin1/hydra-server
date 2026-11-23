@@ -154,8 +154,19 @@ describe("loadConfig", () => {
     expect(config.encryptionKey).toBe(TEST_KEY);
     expect(config.ai.provider).toBe("groq");
     expect(config.ai.models).toEqual({
-      summary: "gpt-legacy-summary",
+      summary: null,
       filter: "new-filter",
+      answer: null,
+    });
+    const openai = loadConfig({
+      ...officialEnv,
+      AI_PROVIDER: "openai",
+      OPENAI_SUMMARY_MODEL: "gpt-legacy-summary",
+      OPENAI_FILTER_MODEL: "gpt-legacy-filter",
+    });
+    expect(openai.ai.models).toEqual({
+      summary: "gpt-legacy-summary",
+      filter: "gpt-legacy-filter",
       answer: null,
     });
     expect(config.ai.freeDailyBudgetUsd).toBe(5);
