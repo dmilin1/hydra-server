@@ -219,6 +219,9 @@ export function loadConfig(env: Env): Config {
     );
   }
 
+  // OPENAI_SUMMARY_MODEL and OPENAI_FILTER_MODEL are v1 aliases that only applied to openai.
+  const legacyModels: Partial<typeof e> = e.AI_PROVIDER === "openai" ? e : {};
+
   const config: Config = {
     mode,
     port: e.PORT ?? 3000,
@@ -242,8 +245,8 @@ export function loadConfig(env: Env): Config {
       openaiBaseUrl: e.OPENAI_BASE_URL ?? null,
       typesafeApiKey: e.TYPESAFE_AI_API_KEY ?? null,
       models: {
-        summary: e.AI_MODEL_SUMMARY ?? e.OPENAI_SUMMARY_MODEL ?? null,
-        filter: e.AI_MODEL_FILTER ?? e.OPENAI_FILTER_MODEL ?? null,
+        summary: e.AI_MODEL_SUMMARY ?? legacyModels.OPENAI_SUMMARY_MODEL ?? null,
+        filter: e.AI_MODEL_FILTER ?? legacyModels.OPENAI_FILTER_MODEL ?? null,
         answer: e.AI_MODEL_ANSWER ?? null,
       },
       monthlyLimitUsd: e.AI_MONTHLY_LIMIT_USD ?? (mode === "official" ? 2 : null),
